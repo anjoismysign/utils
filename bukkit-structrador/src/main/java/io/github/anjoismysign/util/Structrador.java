@@ -173,19 +173,19 @@ public class Structrador {
      * @param palette           - The palette index of the structure to use, starting at 0, or -1 to pick a random palette.
      * @param integrity         - Determines how damaged the building should look by randomly skipping blocks to place. This value can range from 0 to 1. With 0 removing all blocks and 1 spawning the structure in pristine condition.
      * @param random            - The randomizer used for setting the structure's LootTables and integrity.
-     * @param consumer          - The consumer that will be called when a block is placed.
+     * @param placedBlockConsumer          - The consumer that will be called when a block is placed.
      */
     public void simultaneousPlace(Location location, boolean includeEntities,
                                   StructureRotation structureRotation, Mirror mirror, int palette,
                                   float integrity, Random random,
-                                  Consumer<Block> consumer) {
+                                  Consumer<Block> placedBlockConsumer) {
         simultaneousPlace(location, includeEntities, structureRotation, mirror, palette, integrity, random);
         structure.getPalettes().stream().map(Palette::getBlocks).flatMap(List::stream).forEach(state -> {
             int x = state.getX();
             int y = state.getY();
             int z = state.getZ();
             Block block = location.clone().add(Vectorator.of(x, y, z).rotate(structureRotation)).getBlock();
-            consumer.accept(block);
+            placedBlockConsumer.accept(block);
         });
     }
 
