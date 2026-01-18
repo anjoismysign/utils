@@ -1,5 +1,6 @@
 package io.github.anjoismysign.util;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -37,7 +38,7 @@ public class Cuboid {
     private final double yMaxCentered;
     private final double zMinCentered;
     private final double zMaxCentered;
-    private final World world;
+    private final String worldName;
 
     public static Cuboid of(@NotNull Vector min,
                             @NotNull Vector max,
@@ -48,6 +49,22 @@ public class Cuboid {
         return new Cuboid(point1, point2);
     }
 
+    public Cuboid(final Vector point1, final Vector point2, final String worldName){
+        this.xMin = Math.min(point1.getBlockX(), point2.getBlockX());
+        this.xMax = Math.max(point1.getBlockX(), point2.getBlockX());
+        this.yMin = Math.min(point1.getBlockY(), point2.getBlockY());
+        this.yMax = Math.max(point1.getBlockY(), point2.getBlockY());
+        this.zMin = Math.min(point1.getBlockZ(), point2.getBlockZ());
+        this.zMax = Math.max(point1.getBlockZ(), point2.getBlockZ());
+        this.worldName = worldName;
+        this.xMinCentered = this.xMin + 0.5;
+        this.xMaxCentered = this.xMax + 0.5;
+        this.yMinCentered = this.yMin + 0.5;
+        this.yMaxCentered = this.yMax + 0.5;
+        this.zMinCentered = this.zMin + 0.5;
+        this.zMaxCentered = this.zMax + 0.5;
+    }
+
     public Cuboid(final Location point1, final Location point2) {
         this.xMin = Math.min(point1.getBlockX(), point2.getBlockX());
         this.xMax = Math.max(point1.getBlockX(), point2.getBlockX());
@@ -55,13 +72,31 @@ public class Cuboid {
         this.yMax = Math.max(point1.getBlockY(), point2.getBlockY());
         this.zMin = Math.min(point1.getBlockZ(), point2.getBlockZ());
         this.zMax = Math.max(point1.getBlockZ(), point2.getBlockZ());
-        this.world = point1.getWorld();
+        this.worldName = point1.getWorld().getName();
         this.xMinCentered = this.xMin + 0.5;
         this.xMaxCentered = this.xMax + 0.5;
         this.yMinCentered = this.yMin + 0.5;
         this.yMaxCentered = this.yMax + 0.5;
         this.zMinCentered = this.zMin + 0.5;
         this.zMaxCentered = this.zMax + 0.5;
+    }
+
+    @Override
+    public String toString() {
+        return "Cuboid{" +
+                "world='" + worldName + '\'' +
+                ", xMin=" + xMin +
+                ", xMax=" + xMax +
+                ", yMin=" + yMin +
+                ", yMax=" + yMax +
+                ", zMin=" + zMin +
+                ", zMax=" + zMax +
+                '}';
+    }
+
+    @NotNull
+    public World getWorld(){
+        return Objects.requireNonNull(Bukkit.getWorld(worldName), worldName+" might not be loaded");
     }
 
     public BoundingBox toBoundingBox() {
@@ -74,10 +109,11 @@ public class Cuboid {
      * @param consumer The consumer to apply to the blocks.
      */
     public void forEachBlock(Consumer<Block> consumer) {
+        World world = getWorld();
         for (int x = this.xMin; x <= this.xMax; ++x) {
             for (int y = this.yMin; y <= this.yMax; ++y) {
                 for (int z = this.zMin; z <= this.zMax; ++z) {
-                    final Block blockAt = this.world.getBlockAt(x, y, z);
+                    final Block blockAt = world.getBlockAt(x, y, z);
                     consumer.accept(blockAt);
                 }
             }
@@ -136,8 +172,9 @@ public class Cuboid {
     }
 
     public Location getCenter() {
-        return new Location(this.world, (this.xMax - this.xMin) / 2 + this.xMin,
-                (this.yMax - this.yMin) / 2 + this.yMin, (this.zMax - this.zMin) / 2 + this.zMin);
+        World world = getWorld();
+        return new Location(world, (double) (this.xMax - this.xMin) / 2 + this.xMin,
+                (double) (this.yMax - this.yMin) / 2 + this.yMin, (double) (this.zMax - this.zMin) / 2 + this.zMin);
     }
 
     public double getDistance() {
@@ -152,20 +189,31 @@ public class Cuboid {
         return this.yMax - this.yMin + 1;
     }
 
+    public Vector serialPoint1(){
+        return new Vector(xMin, yMin, zMin);
+    }
+
+    public Vector serialPoint2(){
+        return new Vector(xMax, yMax, zMax);
+    }
+
     public Location getPoint1() {
-        return new Location(this.world, this.xMin, this.yMin, this.zMin);
+        World world = getWorld();
+        return new Location(world, this.xMin, this.yMin, this.zMin);
     }
 
     public Location getPoint2() {
-        return new Location(this.world, this.xMax, this.yMax, this.zMax);
+        World world = getWorld();
+        return new Location(world, this.xMax, this.yMax, this.zMax);
     }
 
     public Location getRandomLocation() {
+        World world = getWorld();
         final Random rand = new Random();
         final int x = rand.nextInt(Math.abs(this.xMax - this.xMin) + 1) + this.xMin;
         final int y = rand.nextInt(Math.abs(this.yMax - this.yMin) + 1) + this.yMin;
         final int z = rand.nextInt(Math.abs(this.zMax - this.zMin) + 1) + this.zMin;
-        return new Location(this.world, x, y, z);
+        return new Location(world, x, y, z);
     }
 
     public int getTotalBlockSize() {
@@ -180,8 +228,15 @@ public class Cuboid {
         return this.zMax - this.zMin + 1;
     }
 
+    public boolean isIn(final Vector vector){
+        return vector.getBlockX() >= this.xMin && vector.getBlockX() <= this.xMax
+                && vector.getBlockY() >= this.yMin && vector.getBlockY() <= this.yMax && vector.getBlockZ() >= this.zMin
+                && vector.getBlockZ() <= this.zMax;
+    }
+
     public boolean isIn(final Location loc) {
-        return loc.getWorld() == this.world && loc.getBlockX() >= this.xMin && loc.getBlockX() <= this.xMax
+        World world = getWorld();
+        return loc.getWorld() == world && loc.getBlockX() >= this.xMin && loc.getBlockX() <= this.xMax
                 && loc.getBlockY() >= this.yMin && loc.getBlockY() <= this.yMax && loc.getBlockZ() >= this.zMin
                 && loc.getBlockZ() <= this.zMax;
     }
@@ -191,7 +246,8 @@ public class Cuboid {
     }
 
     public boolean isInWithMarge(final Location loc, final double marge) {
-        return loc.getWorld() == this.world && loc.getX() >= this.xMinCentered - marge
+        World world = getWorld();
+        return loc.getWorld() == world && loc.getX() >= this.xMinCentered - marge
                 && loc.getX() <= this.xMaxCentered + marge && loc.getY() >= this.yMinCentered - marge
                 && loc.getY() <= this.yMaxCentered + marge && loc.getZ() >= this.zMinCentered - marge
                 && loc.getZ() <= this.zMaxCentered + marge;
@@ -203,16 +259,15 @@ public class Cuboid {
      * @return A list of Chunk objects
      */
     public Set<Chunk> getChunks() {
+        World world = getWorld();
         Set<Chunk> res = new HashSet<>();
-
-        World w = this.world;
         int x1 = this.xMin & ~0xf;
         int x2 = this.xMax & ~0xf;
         int z1 = this.zMin & ~0xf;
         int z2 = this.zMax & ~0xf;
         for (int x = x1; x <= x2; x += 16) {
             for (int z = z1; z <= z2; z += 16) {
-                res.add(w.getChunkAt(x >> 4, z >> 4));
+                res.add(world.getChunkAt(x >> 4, z >> 4));
             }
         }
         return res;
@@ -224,6 +279,7 @@ public class Cuboid {
      * @return List of cuboids
      */
     public List<Cuboid> getFaces() {
+        World world = getWorld();
         List<Cuboid> faces = new ArrayList<>();
         int x1 = xMin;
         int y1 = yMin;
@@ -253,6 +309,7 @@ public class Cuboid {
      * @return The list of locations
      */
     public List<Location> drawEdges(double distance) {
+        World world = getWorld();
         List<Location> result = new ArrayList<>();
         for (double x = xMin; x <= xMax; x += distance) {
             for (double y = yMin; y <= yMax; y += distance) {
@@ -271,18 +328,29 @@ public class Cuboid {
     }
 
     /**
-     * Get the entities in the cuboid.
+     * Get the entities in the cuboid by providing a distance.
      *
+     * @param distance The distance to check the entities
      * @return List of entities
      */
-    public List<Entity> getEntities() {
-        double distance = getDistance();
-        if (distance < 3)
-            distance = 3;
+    public List<Entity> getEntities(double distance) {
         Location center = getCenter();
         return center.getWorld().getNearbyEntities(center, distance, distance, distance)
                 .stream()
                 .filter(entity -> isIn(entity.getLocation()))
                 .toList();
+    }
+
+    /**
+     * Get the entities in the cuboid.
+     *
+     * @return List of entities
+     */
+    public List<Entity> getEntities(){
+        double distance = getDistance();
+        if (distance < 3) {
+            distance = 3;
+        }
+        return getEntities(distance);
     }
 }
