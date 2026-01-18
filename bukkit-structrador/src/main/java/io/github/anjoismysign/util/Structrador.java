@@ -26,10 +26,12 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Blob;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
@@ -157,8 +159,7 @@ public class Structrador {
     public void simultaneousPlace(Location location, boolean includeEntities,
                                   StructureRotation structureRotation, Mirror mirror, int palette,
                                   float integrity, Random random) {
-        structure.place(location, includeEntities,
-                structureRotation, mirror, palette, integrity, random);
+        simultaneousPlace(location,includeEntities,structureRotation,mirror,palette,integrity,random,block -> {},entity -> {});
     }
 
     /**
@@ -178,8 +179,27 @@ public class Structrador {
     public void simultaneousPlace(Location location, boolean includeEntities,
                                   StructureRotation structureRotation, Mirror mirror, int palette,
                                   float integrity, Random random,
-                                  Consumer<Block> placedBlockConsumer) {
-        simultaneousPlace(location, includeEntities, structureRotation, mirror, palette, integrity, random);
+                                  Consumer<Block> placedBlockConsumer,
+                                  Consumer<Entity> placedEntityConsumer) {
+        List<UUID> entities = new ArrayList<>();
+        structure.place(
+                location,
+                includeEntities,
+                structureRotation,
+                mirror,
+                palette,
+                integrity,
+                random,
+                List.of(),
+                List.of((limitedRegion, x, y, z, entity, allowedToSpawn) -> {
+                    UUID uuid = entity.getUniqueId();
+                    entities.add(uuid);
+                    return true;
+                }));
+        entities.forEach(uuid -> {
+            Entity entity = Bukkit.getEntity(uuid);
+            placedEntityConsumer.accept(entity);
+        });
         structure.getPalettes().stream().map(Palette::getBlocks).flatMap(List::stream).forEach(state -> {
             int x = state.getX();
             int y = state.getY();
